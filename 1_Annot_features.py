@@ -1,10 +1,12 @@
+# Fix bug of  TZs
+# Add write_bed()
+# Add merge_bed()
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import re
 import os 
 import argparse
+
 
 def identify_IZs(clusters):
     IZs = []
@@ -18,7 +20,8 @@ def identify_IZs(clusters):
                     IZs.append(j)
                 
     return IZs
-    
+
+
 def identify_TZs(clusters):
     TZs = []
     for i in range(1,len(clusters)-1):
@@ -26,7 +29,7 @@ def identify_TZs(clusters):
             start=i
             while i < len(clusters)-1 and clusters[i] == clusters[i + 1]:
                 i+=1
-            if clusters[i+1] < clusters[i]:
+            if i!=(len(clusters)-1) and clusters[i+1] < clusters[i]:
                 for j in range(start,i+1):
                     TZs.append(j)
                 
@@ -85,8 +88,9 @@ def identify_features(data):
     return(data)
 
 
-def manually_check(sub,out):
-    
+### Add n_S parameter for how many S fractions are
+def manually_check(sub,out,nbreaks,nS):
+    nS=int(nS)
     sub["manually_annot2"]=sub["manually_annot"]
     IZs_index=sub[sub["manually_annot2"]=="IZs"]
     TZs_index=sub[sub["manually_annot2"]=="TZs"]
@@ -144,7 +148,7 @@ def manually_check(sub,out):
         input_list=RTTR_temp[i]
         input_str = ', '.join(input_list)
         #print(input_str)
-        pattern = r"R_TTR(?:, SBs){0,2}, SBs$"
+        pattern = r"R_TTR(?:, SBs){0,"+re.escape(str(nbreaks))+r"}, SBs$"
         match = re.search(pattern, input_str)
         if match:
             #print("Pattern matched!")
@@ -167,7 +171,6 @@ def manually_check(sub,out):
         while start > 0 and sub["manually_annot2"][start-1] == "SBs":
             start=start-1
         else:
-            t=sub["manually_annot2"][start:i+1].values
             LTTR_temp.append(t)
     
     LTTR_temp_df=pd.DataFrame({"LTTR_temp":LTTR_temp})
@@ -178,7 +181,7 @@ def manually_check(sub,out):
         input_list=LTTR_temp[i]
         input_str = ', '.join(input_list)
         #print(input_str)
-        pattern = r"^SBs(?:, SBs){0,2}, L_TTR$"
+        pattern = r"^SBs(?:, SBs){0,"+re.escape(str(nbreaks))+ r"}, L_TTR$"
         match = re.search(pattern, input_str)
         if match:
             #print("Pattern matched!")
@@ -194,6 +197,18 @@ def manually_check(sub,out):
         k=L_TTR_index.index[i]
         for j in range(k-LTTR_temp_df["n"][i]+1,k+1):
             L_TTR_annot.append(j)
+
+    # IZ to LTTR : if with SBs
+
+    for i in IZs_index.index:
+        if sub["manually_annot2"][i]=="IZs":
+            start=i
+            while start < len(sub) and sub["manually_annot2"][start-1] == "SBs":
+                start=start-1
+            if sub["manually_annot2"][start-1] == "L_TTR" and abs(start-i) < nbreaks:
+                for j in range(start,i):
+                    L_TTR_annot.append(j) 
+
 
     print("TTRs: done")
     annot_lib=dict(zip(list(["L_TTR","R_TTR","TZs","IZs"]),list([L_TTR_annot,R_TTR_annot,TZs_annot,IZs_annot])))
@@ -226,33 +241,64 @@ def manually_check(sub,out):
 
     sub.loc[np.unique(CTR_annot),"manually_annot2"]="CTRs"
 
-    na_0=sub[sub[["S" + str(i) for i in range(1,17)]].sum(axis=1)==0].index
+    na_0=sub[sub[["S" + str(i) for i in range(1,nS+1)]].sum(axis=1)==0].index
 
     sub.loc[na_0,"manually_annot2"]="ND"
 
     print("Correct 2nd Annotations: done")
-
-    sub.to_csv(out+"RepliFeatures.csv",index=False)
+    # Change code 
+    sub.to_csv(out+"/RepliFeatures.csv",index=False)
 
     return sub
 
 
-
+def write_bed(data,out):
+    cats=data["manually_annot2"].unique()
+    cats=cats[cats.astype(str)!="nan"]
+    for i in cats:
+        sub_data=data[data["manually_annot2"]==i]
+        sub_data=sub_data[["repliseq_chrom","repliseq_start","repliseq_end","manually_annot2"]]
+        #print(sub_data)
+        out_bed=out+"/"+i+".bed"
+        sub_data.to_csv(out_bed,sep="\t",header=None,index=False)
+        #time.sleep(10)
+        #cmd="bedtools merge -i "+ out_bed+" -c 4 -o distinct > "+out_bed
+        #os.system(cmd)
+        #print("Write: "+out_bed)
+        
+        
+def merge_bed(data,out):
+    cats=data["manually_annot2"].unique()
+    cats=cats[cats.astype(str)!="nan"]
+    for i in cats:
+        input_bed=out+"/"+i+".bed"
+        out_bed=out+"/"+i+"_merge.bed"
+        cmd="bedtools merge -i "+ input_bed+" -c 4 -o distinct > "+out_bed
+        os.system(cmd)
+        print("Write: "+out_bed)
+    
 
 
 parser = argparse.ArgumentParser(prog='python 1_Annot_features.py',formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("-i","--input",help="Input-file to be analyzed. Format accepted is igv")
 parser.add_argument("-o","--output",help="Path to output the result: RepliFeatures.csv")
+parser.add_argument("-n","--nbreaks",help="The break number")
+parser.add_argument("-s","--nS",help="The number of S frations")
 args = parser.parse_args()
 
 if __name__=="__main__":
     igv = args.input
     out = args.output
+    nbreaks = int(args.nbreaks)
+    nS=args.nS
+    nS=int(nS)
     data=pd.read_csv(igv,sep="\t")
-    data["MaxS"]=data.loc[:,["S" + str(i) for i in range(1,17)]].idxmax(axis=1)
+    data["MaxS"]=data.loc[:,["S" + str(i) for i in range(1,nS+1)]].idxmax(axis=1)
     data["MaxS"]=data["MaxS"].astype(str)
     data["Max"]=[re.sub("S","",i) for i in data["MaxS"]]
     data["Max"]=data["Max"].astype(float)
     
     res=identify_features(data)
-    res_df=manually_check(sub=res,out=out)
+    res_df=manually_check(sub=res,out=out,nbreaks=nbreaks,nS=nS)
+    write_bed(data=res_df,out=out)
+    merge_bed(data=res_df,out=out)
