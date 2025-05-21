@@ -36,9 +36,10 @@ Please follow the **Preprocess workflow** to obtain `repliseq_normalized.igv` fi
 
 ```bash
 
-module load BEDTools/2.31.1-GCC-14.1.0 # The script requires Bedtools 
+module load BEDTools/2.31.1-GCC-14.1.0 # The script requires Bedtools
+module load Python/3.12.4-GCCcore-14.1.0
 
-python 1_Annot_features_v3.py -i /omics/groups/OE0574/internal/boyu/result_repliseq_lichin/repliseq_normalized.igv -o /home/l538g/workingf/brainbreaks/DSB/Repliseq_smooth/github/Annotation-of-high-resolution-Repli-seq-features/Test -n 5 -s 16
+python 1_Annot_features.py -i /omics/groups/OE0574/internal/boyu/result_repliseq_lichin/repliseq_normalized.igv -o /home/l538g/workingf/brainbreaks/DSB/Repliseq_smooth/github/Annotation-of-high-resolution-Repli-seq-features/Test -n 5 -s 16
 ```
 
 
