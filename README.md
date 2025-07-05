@@ -42,4 +42,22 @@ module load Python/3.12.4-GCCcore-14.1.0
 python 1_Annot_features.py -i /omics/groups/OE0574/internal/boyu/result_repliseq_lichin/repliseq_normalized.igv -o /home/l538g/workingf/brainbreaks/DSB/Repliseq_smooth/github/Annotation-of-high-resolution-Repli-seq-features/Test -n 5 -s 16
 ```
 
+# For Script QC
+This compares annotated replication features between two Repli-seq replicates and generates QC visualizations (or two conditions as you like).
 
+
+## Inputs:
+
+- rep1, rep2: CSVs with annotated Repli-seq features (two files you want to compare).
+
+- rep1_name, rep2_name: Labels for the replicates or conditions.
+
+- sample: Sample name used in output files.
+
+## out: Output directory.
+
+Outputs:
+*_Percentage_compare.pdf: Stacked bar plot showing the feature composition per replicate.
+
+*_Percentage_shift.pdf: Heatmap showing feature annotation consistency between replicates. 
+(It compares the distribution of features between repeat1 and repeat2. Each cell represents the number of elements that are annotated as a given feature in repeat1 and simultaneously as another (or the same) feature in repeat2. For example, among all the elements labeled as IZ in repeat2, what proportion were IZ, CTR, or other feature types in repeat1. Each column sum is 1. It captures how features are retained or reclassified between repeat1 and repeat2.)
