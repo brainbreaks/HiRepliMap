@@ -56,7 +56,7 @@ This compares annotated replication features between two Repli-seq replicates an
 
 ## out: Output directory.
 
-Outputs:
+
 *_Percentage_compare.pdf: Stacked bar plot showing the feature composition per replicate.
 
 *_Percentage_shift.pdf: Heatmap showing feature annotation consistency between replicates. 
